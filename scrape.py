@@ -28,6 +28,10 @@ if response.status_code == 200:
             round2.append([category.text,[[] for i in range(5)]])
         else:
             final = [category.text,[]]
+        
+    
+    
+        
     # Example: Get the clues and answers
     clues = soup.select('td.clue')
     for x,clue in enumerate(clues):
@@ -35,12 +39,26 @@ if response.status_code == 200:
         answer_text = clue.find('em', class_='correct_response')
         if clue_text and answer_text:
             if x<30:
-                round1[x%6][1][x//6] = [clue_text.text.strip(),answer_text.text.strip()]
+                round1[x%6][1][x//6] = [clue_text.text.strip(), answer_text.text.strip(), False]
             elif 30<=x<60:
-                round2[x%6][1][(x-30)//6] = [clue_text.text.strip(),answer_text.text.strip()]
+                round2[x%6][1][(x-30)//6] = [clue_text.text.strip(), answer_text.text.strip(), False]
             else:
                 final[1] = [clue_text.text.strip(),answer_text.text.strip()]
 
+    text = response.text.split('\n')
+    for i,line in enumerate(text):
+        if "clue_value_daily_double" in line:
+            newline = text[i-1].replace(" ","")
+            if "DJ" in newline:
+                cat = int(newline[newline.find('c')+8])-1
+                clue = int(newline[newline.find('clue')+10])-1
+                round2[cat][1][clue][2] = True
+            else:
+                cat = int(newline[newline.find('c')+7])-1
+                clue = int(newline[newline.find('clue')+9])-1
+                round1[cat][1][clue][2] = True
+    
+    
 else:
     print(f"Failed to retrieve the page. Status code: {response.status_code}")
 

@@ -6,17 +6,19 @@ import tkinter as tk
 import os
 from tkinter import *
 
-print(final)
+m = 1 #size modifier
+width, height = 900*m, 540*m+50
+
 
 root = tk.Tk()
-embed = tk.Frame(root, width = 500, height = 500) #creates embed frame for pygame window
+embed = tk.Frame(root, width=width, height=height) #creates embed frame for pygame window
 #embed.grid(columnspan = (600), rowspan = 500) # Adds grid
 #embed.pack(side = LEFT) #packs window to the left
 
 players = ["becker","ian","blake"]
 scores = {player:0 for player in players}
 
-display = 1 # 1-board 2-question 3-answer 4-final
+display = 1 # 1-board 2-question 3-answer 4-daily double
 
 def update_score(player, amount, correct = False, question = False):
     global display
@@ -31,6 +33,7 @@ def update_score(player, amount, correct = False, question = False):
         scores[players[player]] += money
     elif question and display == 3:
         display = 1
+        roundMask[ques[0]][ques[1]] = False
         displayAnswer()
     label_var[player].set(f"{players[player]}: {scores[players[player]]}")
 
@@ -73,25 +76,24 @@ for i, player in enumerate(players):
 
 
 
-os.environ['SDL_WINDOWID'] = str(embed.winfo_id())
-os.environ['SDL_VIDEODRIVER'] = 'windib'
+# os.environ['SDL_WINDOWID'] = str(embed.winfo_id())
+# os.environ['SDL_VIDEODRIVER'] = 'windib'
 
+
+
+
+rounds = [round1,round2,final]
 
 
 pygame.init()
-rounds = [round1,round2,final]
-
-m = 1 #size modifier
-width, height = 900*m, 540*m+50
-
 screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Jeopardy")
 black = (0,0,0)
 white = (255,255,255)
 gold = (214, 159, 76)
 currentRound = 2
-roundMask = [[False for x in range(5)] for y in range(6)]
-roundMask[0][0] = True
+roundMask = [[True for x in range(5)] for y in range(6)]
+
 
 
 
@@ -170,30 +172,68 @@ def display_wrapped_text(text, color, size, position, max_width):
 
 # Game loop
 while True:
+    
+    
+    
+    
     for event in pygame.event.get():
         if event.type == pygame.MOUSEBUTTONUP: 
-            if display == 1:
-                pos = pygame.mouse.get_pos()
-                if 90*m<pos[1]<height-50:
-                    x = pos[0]//(150*m)
-                    y = (pos[1]-90*m)//(90*m)
-                    if roundMask[x][y]:
-                        ques = [x,y]
-                        roundMask[x][y] = False
-                        display = 2
-                        answer = rounds[currentRound-1][ques[0]][1][ques[1]][1]
-                        displayAnswer(answer)
+            if event.button == 1:
+                if display == 1 and currentRound<=2:
+                    pos = pygame.mouse.get_pos()
+                    if 90*m<pos[1]<height-50:
+                        x = pos[0]//(150*m)
+                        y = (pos[1]-90*m)//(90*m)
+                        if roundMask[x][y]:
+                            ques = [x,y]
+                            
+                            if rounds[currentRound-1][x][1][y][2]:
+                                display = 4
+                            else:
+                                display = 2
+                            answer = rounds[currentRound-1][ques[0]][1][ques[1]][1]
+                            displayAnswer(answer)
 
-            elif display == 2:
-                display += 1
-            elif display == 3:
-                display = 1
-                displayAnswer()
+                elif display == 2:
+                    display += 1
+                elif display == 3:
+                    roundMask[ques[0]][ques[1]] = False
+                    display = 1
+                elif display == 4:
+                    display = 2
+                if display == 1 and currentRound == 3:
+                    display+=1
+                    
+                    
+                    answer = rounds[currentRound-1][1][1]
+                    displayAnswer(answer)
+            elif event.button == 3:
+                pos = pygame.mouse.get_pos()
+                x = pos[0]//(150*m)
+                y = (pos[1]-90*m)//(90*m)
+                
+                if currentRound<=2:
+                    if display == 1:
+                        roundMask[x][y] = True   
+                    elif display == 2:
+                        display-=1
 
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
 
+    cluesLeft = 30
+    for x in roundMask:
+        for y in x:
+            if y:
+                break
+            else:
+                cluesLeft-=1
+    if cluesLeft == 0:
+        currentRound+=1
+        roundMask = [[True for x in range(5)] for y in range(6)]
+    
+    
     screen.fill((7,18,119))  # Fill with blue
 
     if currentRound<3 and display == 1:
@@ -210,30 +250,30 @@ while True:
                     display_text(f"${j*200*currentRound}", gold, 30*m, (i*150*m+75*m,j*90*m+45*m))
     if currentRound == 3 and display == 1:
         pygame.draw.rect(screen, black, ((width/2-75*m,(height-50)/2-45*m), (150*m,90*m)), 2)
-        display_wrapped_text(rounds[currentRound-1][0],black,20*m,(150*p*m+75*m+1,45*m+1),150)
-        display_wrapped_text(rounds[currentRound-1][0],white,20*m,(150*p*m+75*m,45*m),150)
+        display_wrapped_text(rounds[currentRound-1][0],black,20*m,((m*900)//2+3,(m*540)//2+3),150)
+        display_wrapped_text(rounds[currentRound-1][0],white,20*m,((m*900)//2,(m*540)//2),150)
     if display == 2:
-        question = rounds[currentRound-1][ques[0]][1][ques[1]][0]
+        if currentRound<3:
+            question = rounds[currentRound-1][ques[0]][1][ques[1]][0]
+        else:
+            question = rounds[currentRound-1][1][0]
         display_wrapped_text(question, black, 40*m, ((m*900)//2+3,(m*540)//2+3), 540)
         display_wrapped_text(question, white, 40*m, ((m*900)//2,(m*540)//2), 540)
     
     if display == 3:
-        answer = rounds[currentRound-1][ques[0]][1][ques[1]][1]
+        if currentRound<3:
+            answer = rounds[currentRound-1][ques[0]][1][ques[1]][1]
+        else:
+            answer = rounds[currentRound-1][1][1]
         display_wrapped_text(answer, black, 40*m, ((m*900)//2+3,(m*540)//2+3), 540)
         display_wrapped_text(answer, white, 40*m, ((m*900)//2,(m*540)//2), 540)
+    if display == 4:
+        display_text("DAILY DOUBLE!", black, 50*m, ((m*900)//2+3,(m*540)//2+3))
+        display_text("DAILY DOUBLE!", white, 50*m, ((m*900)//2,(m*540)//2))
     for i,player in enumerate(players):
         display_text(f"{player}: {scores[player]}", white, 20*m, (100+i*200*m,height-25))
 
-    cluesLeft = 30
-    for x in roundMask:
-        for y in x:
-            if y:
-                break
-            else:
-                cluesLeft-=1
-    if cluesLeft == 0:
-        currentRound+=1
-        roundMask = [[True for x in range(5)] for y in range(6)]
+    
 
     pygame.display.flip()
 
